@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConversaTrait | Stop Hiring Who They Claim To Be</title>
+<meta name="description" content="Analyze real behavior, not rehearsed answers. 29+ frameworks. 5-minute results.">
+<meta property="og:title" content="Your Last Bad Hire Looked Perfect On Paper">
+<meta property="og:description" content="Self-report assessments are trash. ConversaTrait analyzes real conversations to show you who candidates actually are.">
+<meta property="og:type" content="website">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Space+Grotesk:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    background: #06060f;
+    font-family: 'JetBrains Mono', 'SF Mono', 'Fira Code', monospace;
+    color: #e0e0f0;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 20px 16px;
+    -webkit-font-smoothing: antialiased;
+  }
+  #app { width: 100%; max-width: 440px; position: relative; min-height: 660px; }
+
+  .card {
+    background: linear-gradient(165deg, #0a0a1a 0%, #0d0d24 50%, #0a0a1a 100%);
+    border: 1px solid rgba(0,255,163,0.15);
+    border-radius: 12px;
+    padding: 32px 28px;
+    position: relative;
+    overflow: hidden;
+    box-shadow: 0 0 60px rgba(0,255,163,0.06), inset 0 1px 0 rgba(255,255,255,0.03);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+  }
+  .card.visible { opacity: 1; transform: translateY(0); }
+  .card .scanline {
+    position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+    pointer-events: none; z-index: 10;
+    background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,255,163,0.015) 2px, rgba(0,255,163,0.015) 4px);
+  }
+  .card .glow-br {
+    position: absolute; bottom: -40px; right: -40px; width: 140px; height: 140px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,163,0.06) 0%, transparent 70%);
+  }
+  .card .glow-tl {
+    position: absolute; top: -30px; left: -30px; width: 120px; height: 120px; border-radius: 50%;
+    background: radial-gradient(circle, rgba(0,255,163,0.05) 0%, transparent 70%);
+  }
+
+  .dim { color: #5a5a7a; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 24px; }
+  .dim .accent { color: #00ffa3; }
+  .dim .accent-red { color: #ff003c; }
+  .green { color: #00ffa3; }
+  .red { color: #ff003c; }
+
+  .headline {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 26px; font-weight: 800; line-height: 1.15; margin-bottom: 16px; letter-spacing: -0.5px;
+  }
+  .subhead { font-size: 13px; color: #8a8aaf; line-height: 1.6; margin-bottom: 24px; }
+
+  .step { opacity: 0; transform: translateY(12px); transition: all 0.6s ease; }
+  .step.show { opacity: 1; transform: translateY(0); }
+
+  .glitch { position: relative; display: inline-block; }
+  .glitch .g-r, .glitch .g-g {
+    position: absolute; left: 0; top: 0; opacity: 0;
+  }
+  .glitch.active .g-r { opacity: 0.7; left: 2px; top: -1px; clip-path: inset(10% 0 60% 0); color: #ff003c; }
+  .glitch.active .g-g { opacity: 0.7; left: -2px; top: 1px; clip-path: inset(50% 0 10% 0); color: #00ffa3; }
+
+  /* Buttons */
+  .btn-outline {
+    display: block; width: 100%; padding: 14px 28px; background: transparent;
+    border: 1px solid #00ffa3; color: #00ffa3;
+    font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    letter-spacing: 2px; text-transform: uppercase; cursor: pointer;
+    border-radius: 6px; transition: all 0.25s ease; text-align: center;
+  }
+  .btn-outline:hover { background: rgba(0,255,163,0.1); box-shadow: 0 0 20px rgba(0,255,163,0.15); }
+
+  .btn-solid {
+    display: block; width: 100%; padding: 14px 28px; background: #00ffa3; border: none;
+    color: #0a0a1a; font-family: 'JetBrains Mono', monospace; font-size: 12px;
+    font-weight: 700; letter-spacing: 2px; text-transform: uppercase;
+    cursor: pointer; border-radius: 6px; transition: all 0.25s ease; text-align: center;
+    text-decoration: none;
+  }
+  .btn-solid:hover { box-shadow: 0 0 24px rgba(0,255,163,0.3); }
+
+  /* Bars */
+  .bar-track { width: 100%; height: 8px; background: #1a1a2e; border-radius: 4px; overflow: hidden; position: relative; }
+  .bar-fill { height: 100%; border-radius: 4px; width: 0; transition: width 1.2s cubic-bezier(0.22, 1, 0.36, 1); }
+  .bar-fill.instant { transition: none; }
+
+  .score-row { margin-bottom: 14px; }
+  .score-row .label-row { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .score-row .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1.5px; color: #8a8aaf; }
+  .score-row .value { font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+  /* Candidate cards */
+  .candidate-card {
+    border: 1px solid rgba(255,255,255,0.06); background: rgba(255,255,255,0.02);
+    border-radius: 8px; padding: 18px; margin-bottom: 12px; cursor: pointer;
+    transition: all 0.25s ease;
+  }
+  .candidate-card:hover { border-color: rgba(0,255,163,0.4); }
+  .candidate-card.picked { border-color: #00ffa3; background: rgba(0,255,163,0.05); }
+  .candidate-card .c-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .candidate-card .c-name { font-size: 14px; font-weight: 700; }
+  .candidate-card .c-avg { font-size: 10px; color: #00ffa3; letter-spacing: 1.5px; text-transform: uppercase; }
+
+  /* Reveal elements */
+  .red-flags { background: rgba(255,0,60,0.06); border: 1px solid rgba(255,0,60,0.15); border-radius: 6px; padding: 14px; margin-bottom: 16px; }
+  .red-flag-item { font-size: 12px; color: #e0e0f0; margin-bottom: 8px; padding-left: 14px; position: relative; }
+  .red-flag-item:last-child { margin-bottom: 0; }
+  .red-flag-item::before { content: '×'; position: absolute; left: 0; color: #ff003c; }
+
+  .chat-box { background: rgba(0,255,163,0.03); border: 1px solid rgba(0,255,163,0.08); border-radius: 6px; padding: 14px; margin-bottom: 24px; }
+  .chat-box pre { font-size: 11px; color: #8a8aaf; white-space: pre-wrap; margin: 0; line-height: 1.7; font-family: 'JetBrains Mono', monospace; }
+
+  /* Feature grid */
+  .feature-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 28px; }
+  .feature-cell {
+    background: rgba(0,255,163,0.04); border: 1px solid rgba(0,255,163,0.1);
+    border-radius: 6px; padding: 14px 12px; text-align: center;
+  }
+  .feature-cell .f-icon { font-size: 20px; margin-bottom: 6px; }
+  .feature-cell .f-line1 { font-size: 13px; font-weight: 700; color: #e0e0f0; }
+  .feature-cell .f-line2 { font-size: 10px; color: #5a5a7a; text-transform: uppercase; letter-spacing: 1px; }
+
+  .replay-btn {
+    background: none; border: none; color: #5a5a7a; font-size: 11px;
+    cursor: pointer; letter-spacing: 1px; text-transform: uppercase;
+    font-family: 'JetBrains Mono', monospace; margin-top: 14px;
+  }
+  .replay-btn:hover { color: #8a8aaf; }
+
+  .hidden { display: none; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+(function() {
+  const candidates = [
+    {
+      name: "Candidate A",
+      selfReport: { teamwork: 95, leadership: 90, adaptability: 88, integrity: 97 },
+      reality: { teamwork: 41, leadership: 28, adaptability: 55, integrity: 34 },
+      redFlags: ["Passive-aggressive in group threads", "Takes credit for others' ideas", "Avoids conflict by ghosting"],
+      chatExcerpt: '"lol yeah I\'ll handle it" → (never handles it)\n"that was basically my idea" → (it wasn\'t)\n"sure, sounds great 👍" → (complains privately to 3 people)'
+    },
+    {
+      name: "Candidate B",
+      selfReport: { teamwork: 92, leadership: 85, adaptability: 91, integrity: 94 },
+      reality: { teamwork: 78, leadership: 82, adaptability: 69, integrity: 88 },
+      redFlags: ["Micromanages when stressed", "Struggles to delegate", "Over-promises timelines"],
+      chatExcerpt: '"I\'ll just do it myself, faster that way"\n"Can you send me a screenshot of your progress?"\n"We can definitely ship by Friday" → (they cannot)'
+    }
+  ];
+
+  const app = document.getElementById('app');
+  let currentScreen = null;
+  let pickedIdx = 0;
+
+  function avg(obj) { const vals = Object.values(obj); return Math.round(vals.reduce((a,b)=>a+b,0)/vals.length); }
+
+  function show(el) { requestAnimationFrame(() => requestAnimationFrame(() => el.classList.add('visible'))); }
+
+  // Glitch effect
+  function startGlitch(el) {
+    if (!el) return;
+    setInterval(() => {
+      el.classList.add('active');
+      setTimeout(() => el.classList.remove('active'), 150);
+    }, 3000 + Math.random() * 4000);
+  }
+
+  function barHTML(value, color, delayMs, id) {
+    return `<div class="bar-track"><div class="bar-fill" id="${id}" style="background:${color};" data-target="${value}" data-delay="${delayMs}"></div></div>`;
+  }
+
+  function animateBars(container) {
+    container.querySelectorAll('.bar-fill').forEach(bar => {
+      const target = bar.dataset.target;
+      const delay = parseInt(bar.dataset.delay) || 0;
+      setTimeout(() => { bar.style.width = target + '%'; }, delay);
+    });
+  }
+
+  function scoreRowHTML(label, selfVal, realVal, showReal, idx, uid) {
+    const valText = showReal ? `${selfVal}% → ${realVal}%` : `${selfVal}%`;
+    const valColor = showReal ? '#ff003c' : '#00ffa3';
+    const barColor = showReal ? 'rgba(0,255,163,0.2)' : '#00ffa3';
+    let html = `<div class="score-row">
+      <div class="label-row"><span class="label">${label}</span><span class="value" style="color:${valColor}">${valText}</span></div>
+      <div style="position:relative">
+        ${barHTML(selfVal, barColor, idx*150, uid+'-self')}`;
+    if (showReal) {
+      html += `<div style="position:absolute;top:0;left:0;width:100%;height:100%">${barHTML(realVal, '#ff003c', idx*200+300, uid+'-real')}</div>`;
+    }
+    html += `</div></div>`;
+    return html;
+  }
+
+  // SCREENS
+  function renderHook() {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="scanline"></div>
+      <div class="glow-br"></div>
+      <div class="dim"><span class="accent">▌</span> conversatrait // hiring</div>
+      <div style="min-height:220px">
+        <div class="step" id="h0">
+          <div class="headline">Your last bad hire <span class="glitch" id="glitch1"><span class="red">looked perfect</span><span class="g-r">looked perfect</span><span class="g-g">looked perfect</span></span> on paper.</div>
+        </div>
+        <div class="step" id="h1">
+          <div class="subhead" style="margin-bottom:8px">They aced the personality assessment.<br>Crushed the interview.</div>
+        </div>
+        <div class="step" id="h2">
+          <div style="font-size:15px;color:#ff003c;margin-bottom:28px;line-height:1.5">Then tanked the team in 90 days.</div>
+        </div>
+        <div class="step" id="h3">
+          <div style="font-size:12px;color:#5a5a7a;margin-bottom:20px;line-height:1.6">
+            Self-report assessments tell you who someone <em>wants</em> to be.<br>We show you who they <span class="green">actually are</span>.
+          </div>
+        </div>
+      </div>
+      <div class="step" id="h4">
+        <button class="btn-outline" id="hookCta">See the problem →</button>
+      </div>
+    `;
+    return card;
+  }
+
+  function showHook() {
+    app.innerHTML = '';
+    const card = renderHook();
+    app.appendChild(card);
+    show(card);
+    startGlitch(document.getElementById('glitch1'));
+    const delays = [800, 2200, 3400, 3400];
+    ['h0','h1','h2','h3','h4'].forEach((id, i) => {
+      setTimeout(() => document.getElementById(id)?.classList.add('show'), i < 4 ? delays[i] || delays[3] : delays[3]);
+    });
+    document.getElementById('hookCta').addEventListener('click', () => fadeToScreen(showQuiz));
+  }
+
+  function renderQuiz() {
+    const card = document.createElement('div');
+    card.className = 'card';
+    let candidatesHTML = '';
+    candidates.forEach((c, idx) => {
+      let rows = '';
+      Object.entries(c.selfReport).forEach(([key, val], i) => {
+        rows += scoreRowHTML(key, val, c.reality[key], false, i, `q${idx}-${key}`);
+      });
+      candidatesHTML += `
+        <div class="candidate-card" data-idx="${idx}">
+          <div class="c-header"><span class="c-name">${c.name}</span><span class="c-avg">Avg: ${avg(c.selfReport)}%</span></div>
+          ${rows}
+        </div>`;
+    });
+    card.innerHTML = `
+      <div class="scanline"></div>
+      <div class="dim"><span class="accent">▌</span> scenario // two candidates</div>
+      <div style="font-size:14px;color:#c0c0d8;margin-bottom:24px;line-height:1.6">
+        You're hiring for a team lead role. Both candidates took a standard personality assessment. Here are their scores:
+      </div>
+      ${candidatesHTML}
+      <div style="font-size:12px;color:#5a5a7a;text-align:center;margin-top:8px">Tap a candidate to hire them</div>
+    `;
+    return card;
+  }
+
+  function showQuiz() {
+    app.innerHTML = '';
+    const card = renderQuiz();
+    app.appendChild(card);
+    show(card);
+    setTimeout(() => animateBars(card), 100);
+    card.querySelectorAll('.candidate-card').forEach(el => {
+      el.addEventListener('click', function() {
+        card.querySelectorAll('.candidate-card').forEach(c => c.classList.remove('picked'));
+        this.classList.add('picked');
+        pickedIdx = parseInt(this.dataset.idx);
+        setTimeout(() => fadeToScreen(showReveal), 600);
+      });
+    });
+  }
+
+  function renderReveal() {
+    const c = candidates[pickedIdx];
+    let rows = '';
+    Object.entries(c.selfReport).forEach(([key, val], i) => {
+      rows += scoreRowHTML(key, val, c.reality[key], true, i, `r-${key}`);
+    });
+    let flags = c.redFlags.map(f => `<div class="red-flag-item">${f}</div>`).join('');
+
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="scanline"></div>
+      <div class="dim"><span class="accent-red">▌</span> reality check // ${c.name.toLowerCase()}</div>
+      <div style="font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;color:#ff003c;margin-bottom:6px">Here's who you actually hired.</div>
+      <div style="font-size:12px;color:#5a5a7a;margin-bottom:20px"><span class="green">Green</span> = self-reported &nbsp; <span class="red">Red</span> = behavioral analysis</div>
+      <div id="revealBars">${rows}</div>
+      <div id="revealDetails" style="opacity:0;transition:opacity 0.5s ease">
+        <div class="dim" style="color:#ff003c;margin-bottom:10px">⚠ red flags from actual conversations</div>
+        <div class="red-flags">${flags}</div>
+        <div class="dim" style="color:#5a5a7a;margin-bottom:8px">decoded from real messages</div>
+        <div class="chat-box"><pre>${c.chatExcerpt}</pre></div>
+        <button class="btn-solid" id="revealCta">Stop guessing →</button>
+      </div>
+    `;
+    return card;
+  }
+
+  function showReveal() {
+    app.innerHTML = '';
+    const card = renderReveal();
+    app.appendChild(card);
+    show(card);
+    setTimeout(() => animateBars(card), 100);
+    setTimeout(() => {
+      const details = document.getElementById('revealDetails');
+      if (details) details.style.opacity = '1';
+    }, 1800);
+    document.getElementById('revealCta')?.addEventListener('click', () => fadeToScreen(showPitch));
+  }
+
+  function renderPitch() {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = `
+      <div class="scanline"></div>
+      <div class="glow-tl"></div>
+      <div class="dim"><span class="accent">▌</span> conversatrait // for hiring teams</div>
+      <div class="headline" style="font-size:22px;margin-bottom:12px">
+        Hire who they <span class="green">are</span>.<br>Not who they <span style="color:#5a5a7a;text-decoration:line-through">claim to be</span>.
+      </div>
+      <div style="font-size:13px;color:#8a8aaf;line-height:1.7;margin-bottom:28px">
+        ConversaTrait analyzes real workplace communication — Slack threads, emails, team chats — through 29+ behavioral frameworks. No self-report bias. No rehearsed answers.
+      </div>
+      <div class="feature-grid">
+        <div class="feature-cell"><div class="f-icon">⚡</div><div class="f-line1">5-minute</div><div class="f-line2">analysis</div></div>
+        <div class="feature-cell"><div class="f-icon">🎯</div><div class="f-line1">29+</div><div class="f-line2">frameworks</div></div>
+        <div class="feature-cell"><div class="f-icon">🧠</div><div class="f-line1">Behavioral</div><div class="f-line2">not self-report</div></div>
+        <div class="feature-cell"><div class="f-icon">📊</div><div class="f-line1">Dossier-style</div><div class="f-line2">output</div></div>
+      </div>
+      <a href="https://conversatrait.com" target="_blank" rel="noopener noreferrer" class="btn-solid">Try it free — 5 credits</a>
+      <div style="text-align:center"><button class="replay-btn" id="replayBtn">↺ replay</button></div>
+    `;
+    return card;
+  }
+
+  function showPitch() {
+    app.innerHTML = '';
+    const card = renderPitch();
+    app.appendChild(card);
+    show(card);
+    document.getElementById('replayBtn').addEventListener('click', () => fadeToScreen(showHook));
+  }
+
+  function fadeToScreen(showFn) {
+    const card = app.querySelector('.card');
+    if (card) {
+      card.classList.remove('visible');
+      setTimeout(() => showFn(), 350);
+    } else {
+      showFn();
+    }
+  }
+
+  // Boot
+  showHook();
+})();
+</script>
+</body>
+</html>
